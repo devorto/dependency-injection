@@ -1,0 +1,27 @@
+{
+    "name": "devorto/dependency-injection",
+    "description": "DependencyInjection for classes.",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Devorto",
+            "email": "info@devorto.com",
+            "homepage": "https://www.devorto.com/",
+            "role": "Owner"
+        },
+        {
+            "name": "Geoffrey Dijkstra",
+            "email": "geoffrey@devorto.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^7.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Devorto\\DependencyInjection\\": "src"
+        }
+    }
+}
