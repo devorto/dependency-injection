@@ -66,7 +66,7 @@ class DependencyInjection
                     // Early exit, is it already loaded?
                     if(isset(static::$loadedClasses[$type])) {
                         $parameters[] = static::$loadedClasses[$type];
-                        break;
+                        continue;
                     }
 
                     // Is it a interface instead of a normal class? If so load that instead.
