@@ -61,36 +61,23 @@ class DependencyInjection
             foreach ($arguments->getParameters() as $parameter) {
                 $name = $parameter->getName();
                 $type = $parameter->getType()->getName();
-                // Is it a class or parameter (does it contain a "\")?
-                if(strpos($type, '\\') !== false) {
-                    // Early exit, is it already loaded?
-                    if(isset(static::$loadedClasses[$type])) {
-                        $parameters[] = static::$loadedClasses[$type];
-                        continue;
-                    }
 
-                    // Is it a interface instead of a normal class? If so load that instead.
-                    if(isset(static::$interfaceImplementations[$type])) {
-                        // Overwrite interface with class.
-                        $type = static::$interfaceImplementations[$type];
-                    }
-
-                    // Lets check if the class exists (triggers autoload if not loaded yet).
-                    if (!class_exists($type)) {
-                        throw new RuntimeException(
-                            sprintf(
-                                'Unsupported type "%s" for parameter "%s" of class "%s".',
-                                $type,
-                                $name,
-                                $class
-                            )
-                        );
-                    }
-
-                    // Instantiate the class and store it internally and in parameters array.
-                    $parameters[] = static::$loadedClasses[$type] = static::instantiate($type);
-                } else {
+                if ($parameter->getType()->isBuiltin()) {
                     if (!isset(static::$configuration[$class]) || !static::$configuration[$class]->has($name)) {
+                        if ($parameter->isOptional()) {
+                            if ($parameter->isDefaultValueAvailable()) {
+                                try {
+                                    $parameters[] = $parameter->getDefaultValue();
+                                } catch (ReflectionException $exception) {
+                                    // No need to die here.
+                                }
+                            } else {
+                                $parameters[] = null;
+                            }
+
+                            continue;
+                        }
+
                         throw new RuntimeException(
                             sprintf(
                                 'Class "%s" is missing configuration for parameter "%s".',
@@ -101,7 +88,36 @@ class DependencyInjection
                     }
 
                     $parameters[] = static::$configuration[$class]->get($name);
+
+                    continue;
                 }
+
+                // Is it already loaded?
+                if (isset(static::$loadedClasses[$type])) {
+                    $parameters[] = static::$loadedClasses[$type];
+                    continue;
+                }
+
+                // Is it a interface instead of a normal class? If so load that instead.
+                if (isset(static::$interfaceImplementations[$type])) {
+                    // Overwrite interface with class.
+                    $type = static::$interfaceImplementations[$type];
+                }
+
+                // Lets check if the class exists (triggers autoload if not loaded yet).
+                if (!class_exists($type)) {
+                    throw new RuntimeException(
+                        sprintf(
+                            'Unsupported type "%s" for parameter "%s" of class "%s".',
+                            $type,
+                            $name,
+                            $class
+                        )
+                    );
+                }
+
+                // Instantiate the class and store it internally and in parameters array.
+                $parameters[] = static::$loadedClasses[$type] = static::instantiate($type);
             }
         }
 
