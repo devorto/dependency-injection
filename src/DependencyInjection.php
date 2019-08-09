@@ -48,6 +48,12 @@ class DependencyInjection
      */
     public static function instantiate(string $class)
     {
+        // Is it a interface instead of a normal class? If so load that instead.
+        if (isset(static::$interfaceImplementations[$class])) {
+            // Overwrite interface with class.
+            $class = static::$interfaceImplementations[$class];
+        }
+
         $parameters = [];
 
         try {
