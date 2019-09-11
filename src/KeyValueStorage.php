@@ -108,7 +108,7 @@ class KeyValueStorage implements Iterator, Serializable
      */
     public function valid()
     {
-        return !empty($this->current());
+        return key($this->data) !== null;
     }
 
     /**
