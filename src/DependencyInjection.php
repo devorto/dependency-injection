@@ -33,6 +33,9 @@ class DependencyInjection
     }
 
     /**
+     * When requesting a interface or abstract class with instantiate function it with will be
+     * replaced with given class.
+     *
      * @param string $interface
      * @param string $class
      */
@@ -48,13 +51,9 @@ class DependencyInjection
      */
     public static function instantiate(string $class)
     {
-        // Is it a interface instead of a normal class? If so load that instead.
-        if (isset(static::$interfaceImplementations[$class])) {
-            // Overwrite interface with class.
-            $class = static::$interfaceImplementations[$class];
+        if (isset(static::$loadedClasses[$class])) {
+            return static::$loadedClasses[$class];
         }
-
-        $parameters = [];
 
         try {
             $reflection = new ReflectionClass($class);
@@ -62,72 +61,104 @@ class DependencyInjection
             throw new RuntimeException(sprintf('Class "%s" not found.', $class), 0, $exception);
         }
 
-        $arguments = $reflection->getConstructor();
-        if (!empty($arguments)) {
-            foreach ($arguments->getParameters() as $parameter) {
-                $name = $parameter->getName();
-                $type = $parameter->getType()->getName();
+        // Is it a interface or abstract class, instead of a normal class? If so load that instead.
+        if ($reflection->isAbstract() || $reflection->isInterface()) {
+            if (!isset(static::$interfaceImplementations[$class])) {
+                throw new RuntimeException("No implementation found for interface or abstract class '$class'.");
+            }
 
-                if ($parameter->getType()->isBuiltin()) {
-                    if (!isset(static::$configuration[$class]) || !static::$configuration[$class]->has($name)) {
-                        if ($parameter->isOptional()) {
-                            if ($parameter->isDefaultValueAvailable()) {
-                                try {
-                                    $parameters[] = $parameter->getDefaultValue();
-                                } catch (ReflectionException $exception) {
-                                    // No need to die here.
-                                }
-                            } else {
-                                $parameters[] = null;
-                            }
+            // Overwrite interface with class.
+            $class = static::$interfaceImplementations[$class];
 
-                            continue;
-                        }
-
-                        throw new RuntimeException(
-                            sprintf(
-                                'Class "%s" is missing configuration for parameter "%s".',
-                                $class,
-                                $name
-                            )
-                        );
-                    }
-
-                    $parameters[] = static::$configuration[$class]->get($name);
-
-                    continue;
-                }
-
-                // Is it already loaded?
-                if (isset(static::$loadedClasses[$type])) {
-                    $parameters[] = static::$loadedClasses[$type];
-                    continue;
-                }
-
-                // Is it a interface instead of a normal class? If so load that instead.
-                if (isset(static::$interfaceImplementations[$type])) {
-                    // Overwrite interface with class.
-                    $type = static::$interfaceImplementations[$type];
-                }
-
-                // Lets check if the class exists (triggers autoload if not loaded yet).
-                if (!class_exists($type)) {
-                    throw new RuntimeException(
-                        sprintf(
-                            'Unsupported type "%s" for parameter "%s" of class "%s".',
-                            $type,
-                            $name,
-                            $class
-                        )
-                    );
-                }
-
-                // Instantiate the class and store it internally and in parameters array.
-                $parameters[] = static::$loadedClasses[$type] = static::instantiate($type);
+            try {
+                $reflection = new ReflectionClass($class);
+            } catch (ReflectionException $exception) {
+                throw new RuntimeException(sprintf('Class "%s" not found.', $class), 0, $exception);
             }
         }
 
-        // Return the new object.
-        return empty($parameters) ? new $class : new $class(...$parameters);
+        $arguments = $reflection->getConstructor();
+        if (empty($arguments)) {
+            return static::$loadedClasses[$class] = new $class;
+        }
+
+        $parameters = [];
+        $configuration = static::getConfiguration($class);
+
+        foreach ($arguments->getParameters() as $parameter) {
+            $name = $parameter->getName();
+            $type = $parameter->getType()->getName();
+
+            if (!$parameter->getType()->isBuiltin()) {
+                // Instantiate the class and store it internally and in parameters array.
+                $parameters[] = static::instantiate($type);
+
+                continue;
+            }
+
+            if ($configuration->has($name)) {
+                $parameters[] = $configuration->get($name);
+
+                continue;
+            }
+
+            if (!$parameter->isOptional()) {
+                throw new RuntimeException(
+                    sprintf(
+                        'Class "%s" is missing configuration for parameter "%s".',
+                        $class,
+                        $name
+                    )
+                );
+            }
+
+            if ($parameter->isDefaultValueAvailable()) {
+                try {
+                    $parameters[] = $parameter->getDefaultValue();
+                } catch (ReflectionException $exception) {
+                    /**
+                     * The try catch is here to prevent phpstorm errors on "uncaught exceptions".
+                     * This exception is thrown when a parameter is not optional, but this is already checked.
+                     */
+                }
+            } else {
+                $parameters[] = null;
+            }
+        }
+
+        return static::$loadedClasses[$class] = new $class(...$parameters);
+    }
+
+    /**
+     * @param string $parent
+     *
+     * @return KeyValueStorage
+     */
+    protected static function getConfiguration(string $parent): KeyValueStorage
+    {
+        $tree = [];
+        foreach (get_declared_classes() as $class) {
+            if (is_subclass_of($parent, $class, true)) {
+                $tree[] = $class;
+            }
+        }
+        usort($tree, function (string $a, string $b) {
+            return is_subclass_of($a, $b, true) ? 1 : -1;
+        });
+        $tree[] = $parent;
+
+        $config = new KeyValueStorage();
+
+        foreach ($tree as $class) {
+            if (!isset(static::$configuration[$class])) {
+                continue;
+            }
+
+            foreach (static::$configuration[$class] as $key => $value) {
+                $config->add($key, $value);
+            }
+        }
+
+        return $config;
     }
 }
