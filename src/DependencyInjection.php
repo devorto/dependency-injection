@@ -6,6 +6,11 @@ use ReflectionClass;
 use ReflectionException;
 use RuntimeException;
 
+/**
+ * Class DependencyInjection
+ *
+ * @package Devorto\DependencyInjection
+ */
 class DependencyInjection
 {
     /**
@@ -68,6 +73,7 @@ class DependencyInjection
             }
 
             // Overwrite interface with class.
+            $interface = $class;
             $class = static::$interfaceImplementations[$class];
 
             try {
@@ -79,6 +85,11 @@ class DependencyInjection
 
         $arguments = $reflection->getConstructor();
         if (empty($arguments)) {
+            // If the current class is an interface implementation also save the interface class.
+            if (isset($interface)) {
+                return static::$loadedClasses[$interface] = static::$loadedClasses[$class] = new $class;
+            }
+
             return static::$loadedClasses[$class] = new $class;
         }
 
@@ -124,6 +135,11 @@ class DependencyInjection
             } else {
                 $parameters[] = null;
             }
+        }
+
+        // If the current class is an interface implementation also save the interface class.
+        if (isset($interface)) {
+            return static::$loadedClasses[$interface] = static::$loadedClasses[$class] = new $class(...$parameters);
         }
 
         return static::$loadedClasses[$class] = new $class(...$parameters);

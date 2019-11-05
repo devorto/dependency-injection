@@ -6,6 +6,11 @@ use InvalidArgumentException;
 use Iterator;
 use Serializable;
 
+/**
+ * Class KeyValueStorage
+ *
+ * @package Devorto\DependencyInjection
+ */
 class KeyValueStorage implements Iterator, Serializable
 {
     /**
