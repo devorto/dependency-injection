@@ -2,6 +2,7 @@
 
 namespace Devorto\DependencyInjection;
 
+use Devorto\KeyValueStorage\KeyValueStorage;
 use ReflectionClass;
 use ReflectionException;
 use RuntimeException;
