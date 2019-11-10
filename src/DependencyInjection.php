@@ -105,6 +105,13 @@ class DependencyInjection
             $type = $parameter->getType()->getName();
 
             if (!$parameter->getType()->isBuiltin()) {
+                // This is a neat trick so we can use a override, interface or class implementation for this class.
+                if ($configuration->has($name)) {
+                    $parameters[] = static::instantiate($configuration->get($name));
+
+                    continue;
+                }
+
                 // Instantiate the class and store it internally and in parameters array.
                 $parameters[] = static::instantiate($type);
 
