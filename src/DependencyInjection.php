@@ -24,11 +24,13 @@ class DependencyInjection
     protected static $loadedClasses = [];
 
     /**
-     * @var string[]
+     * @var string[] Holds the abstract class or interface implementing class.
      */
     protected static $interfaceImplementations = [];
 
     /**
+     * Add configuration parameter(s) for a class.
+     *
      * @param string $class
      * @param KeyValueStorage $storage
      */
@@ -50,9 +52,11 @@ class DependencyInjection
     }
 
     /**
+     * Convert the class string into it's object counterpart.
+     *
      * @param string $class
      *
-     * @return mixed
+     * @return object
      */
     public static function instantiate(string $class)
     {
