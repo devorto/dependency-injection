@@ -103,9 +103,8 @@ class DependencyInjection
 
         foreach ($arguments->getParameters() as $parameter) {
             $name = $parameter->getName();
-            $type = $parameter->getType()->getName();
 
-            if (!$parameter->getType()->isBuiltin()) {
+            if (!empty($parameter->getType()) && !$parameter->getType()->isBuiltin()) {
                 // This is a neat trick so we can use a override, interface or class implementation for this class.
                 if ($configuration->has($name)) {
                     $parameters[] = static::instantiate($configuration->get($name));
@@ -114,7 +113,7 @@ class DependencyInjection
                 }
 
                 // Instantiate the class and store it internally and in parameters array.
-                $parameters[] = static::instantiate($type);
+                $parameters[] = static::instantiate($parameter->getType()->getName());
 
                 continue;
             }
