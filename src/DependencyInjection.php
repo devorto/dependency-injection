@@ -151,7 +151,7 @@ class DependencyInjection
                 continue;
             }
 
-            if (!$parameter->isOptional()) {
+            if (!$parameter->isOptional() && !$parameter->isDefaultValueAvailable()) {
                 throw new RuntimeException(
                     sprintf(
                         'Class "%s" is missing configuration for parameter "%s".',
