@@ -71,7 +71,7 @@ class DependencyInjection
             throw new RuntimeException(sprintf('Class "%s" not found.', $class), 0, $exception);
         }
 
-        // Is it a interface or abstract class, instead of a normal class? If so load that instead.
+        // Is it an interface or abstract class, instead of a normal class? If so load that instead.
         if ($reflection->isAbstract() || $reflection->isInterface()) {
             if (!isset(static::$interfaceImplementations[$class])) {
                 throw new RuntimeException("No implementation found for interface or abstract class '$class'.");
@@ -105,40 +105,47 @@ class DependencyInjection
             $name = $parameter->getName();
 
             if (!empty($parameter->getType()) && !$parameter->getType()->isBuiltin()) {
-                // This is a neat trick so we can use a override, interface or class implementation for this class.
+                // This is a neat trick, so we can use an override, interface or class implementation for this class.
                 if ($configuration->has($name)) {
-                    // In some cases the provided value is not a class string but null or an object loaded outside
-                    // of this dependency injection class.
-                    if (!is_string($configuration->get($name))) {
-                        $parameters[] = $configuration->get($name);
+                    $configItem = $configuration->get($name);
+                    // In some cases the provided value is not a class string but null, array or
+                    // an object (loaded outside this dependency injection class).
+                    if (!is_string($configItem)) {
+                        if ($parameter->isVariadic() && is_array($configItem)) {
+                            foreach ($configItem as $variadic) {
+                                $parameters[] = $variadic;
+                            }
+                        } else {
+                            $parameters[] = $configItem;
+                        }
                     } else {
-                        $parameters[] = static::instantiate($configuration->get($name));
+                        $parameters[] = static::instantiate($configItem);
                     }
 
                     continue;
-                }
-
-                // Instantiate the class and store it internally and in parameters array.
-                try {
-                    $parameters[] = static::instantiate($parameter->getType()->getName());
-                } catch (RuntimeException $exception) {
-                    // Dirty fix if class or interface is optional.
-                    if (
-                        false !== strpos($exception->getMessage(), 'No implementation found')
-                        && $parameter->isOptional()
-                    ) {
-                        try {
-                            $parameters[] = $parameter->isDefaultValueAvailable()
-                                ? $parameter->getDefaultValue()
-                                : null;
-                        } catch (ReflectionException $exception) {
-                            /**
-                             * The try catch is here to prevent phpstorm errors on "uncaught exceptions".
-                             * This exception is thrown when a parameter is not optional, but this is already checked.
-                             */
+                } elseif (!$parameter->isVariadic()) {
+                    // Instantiate the class and store it internally and in parameters array.
+                    try {
+                        $parameters[] = static::instantiate($parameter->getType()->getName());
+                    } catch (RuntimeException $exception) {
+                        // Dirty fix if class or interface is optional.
+                        if (
+                            false !== strpos($exception->getMessage(), 'No implementation found')
+                            && $parameter->isOptional()
+                        ) {
+                            try {
+                                $parameters[] = $parameter->isDefaultValueAvailable()
+                                    ? $parameter->getDefaultValue()
+                                    : null;
+                            } catch (ReflectionException $exception) {
+                                /**
+                                 * The try catch is here to prevent phpstorm errors on "uncaught exceptions".
+                                 * This exception is thrown when a parameter is not optional, but this is already checked.
+                                 */
+                            }
+                        } else {
+                            throw new RuntimeException($exception->getMessage());
                         }
-                    } else {
-                        throw new RuntimeException($exception->getMessage());
                     }
                 }
 
@@ -146,7 +153,13 @@ class DependencyInjection
             }
 
             if ($configuration->has($name)) {
-                $parameters[] = $configuration->get($name);
+                if ($parameter->isVariadic()) {
+                    foreach ($configuration->get($name) as $variadic) {
+                        $parameters[] = $variadic;
+                    }
+                } else {
+                    $parameters[] = $configuration->get($name);
+                }
 
                 continue;
             }
@@ -159,9 +172,7 @@ class DependencyInjection
                         $name
                     )
                 );
-            }
-
-            if ($parameter->isDefaultValueAvailable()) {
+            } elseif ($parameter->isDefaultValueAvailable()) {
                 try {
                     $parameters[] = $parameter->getDefaultValue();
                 } catch (ReflectionException $exception) {
