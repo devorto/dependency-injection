@@ -17,17 +17,17 @@ class DependencyInjection
     /**
      * @var KeyValueStorage[] Holds the normal configuration (like int|array|string parameters) for classes.
      */
-    protected static $configuration = [];
+    protected static array $configuration = [];
 
     /**
      * @var array Holds all the loaded classes (static/cached).
      */
-    protected static $loadedClasses = [];
+    protected static array $loadedClasses = [];
 
     /**
      * @var string[] Holds the abstract class or interface implementing class.
      */
-    protected static $interfaceImplementations = [];
+    protected static array $interfaceImplementations = [];
 
     /**
      * Add configuration parameter(s) for a class.
@@ -41,7 +41,7 @@ class DependencyInjection
     }
 
     /**
-     * When requesting a interface or abstract class with instantiate function it with will be
+     * When requesting an interface or abstract class with instantiate function it with will be
      * replaced with given class.
      *
      * @param string $interface
@@ -59,7 +59,7 @@ class DependencyInjection
      *
      * @return object
      */
-    public static function instantiate(string $class)
+    public static function instantiate(string $class): object
     {
         if (isset(static::$loadedClasses[$class])) {
             return static::$loadedClasses[$class];
@@ -130,7 +130,7 @@ class DependencyInjection
                     } catch (RuntimeException $exception) {
                         // Dirty fix if class or interface is optional.
                         if (
-                            false !== strpos($exception->getMessage(), 'No implementation found')
+                            str_contains($exception->getMessage(), 'No implementation found')
                             && $parameter->isOptional()
                         ) {
                             try {
@@ -203,12 +203,12 @@ class DependencyInjection
     {
         $tree = [];
         foreach (get_declared_classes() as $class) {
-            if (is_subclass_of($parent, $class, true)) {
+            if (is_subclass_of($parent, $class)) {
                 $tree[] = $class;
             }
         }
         usort($tree, function (string $a, string $b) {
-            return is_subclass_of($a, $b, true) ? 1 : -1;
+            return is_subclass_of($a, $b) ? 1 : -1;
         });
         $tree[] = $parent;
 

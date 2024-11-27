@@ -17,8 +17,8 @@
         }
     ],
     "require": {
-        "php": "^7.1.0||^8.0.0",
-        "devorto/key-value-storage": "^2.0.0"
+        "php": "^8.3.0",
+        "devorto/key-value-storage": "^3.0.0"
     },
     "autoload": {
         "psr-4": {
